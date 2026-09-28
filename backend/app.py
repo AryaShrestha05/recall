@@ -1,9 +1,15 @@
 from fastapi import FastAPI, File, HTTPException, UploadFile
 
-from .db import SOURCES, get_memory
+from .db import SOURCES, get_memory, list_memories
 from .ingest import ingest
 
 app = FastAPI(title="Recall")
+
+
+@app.get("/memories")
+def read_memories():
+    """Return recent memories without their large transcripts."""
+    return list_memories()
 
 
 @app.post("/ingest")

@@ -5,9 +5,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from .db import SOURCES, connect
-
-# ponytail: whisper-small is good enough for a 6-min lecture; swap repo if names/terms are garbage
-WHISPER_MODEL = "mlx-community/whisper-small-mlx"
+from .transcription import transcribe
 
 
 def ingest(audio_path: Path, title: str | None = None) -> int:
@@ -20,18 +18,14 @@ def ingest(audio_path: Path, title: str | None = None) -> int:
     if not audio_path.is_file():
         raise FileNotFoundError(audio_path)
 
-    # Import Whisper only when transcription is needed. This keeps normal API
-    # startup light and avoids loading the large ML package unnecessarily.
-    import mlx_whisper
-
     # Keep a copy of the original recording inside Recall's source directory.
     SOURCES.mkdir(parents=True, exist_ok=True)
     stored = SOURCES / audio_path.name
     if audio_path != stored:
         shutil.copy2(audio_path, stored)
 
-    # Whisper returns both the full transcript and smaller timestamped pieces.
-    result = mlx_whisper.transcribe(str(stored), path_or_hf_repo=WHISPER_MODEL)
+    # The selected engine returns both the full transcript and timestamped pieces.
+    result = transcribe(stored)
     transcript = (result.get("text") or "").strip()
     segments = result.get("segments") or []
 
@@ -70,17 +64,18 @@ def ingest(audio_path: Path, title: str | None = None) -> int:
         memory_id = memory["id"]
 
         # Store each timestamped piece so answers can cite the exact moment.
-        conn.executemany(
-            """
-            INSERT INTO transcript_segments (memory_id, start_time, end_time, text)
-            VALUES (%s, %s, %s, %s)
-            """,
-            [
-                (memory_id, float(s["start"]), float(s["end"]), (s.get("text") or "").strip())
-                for s in segments
-                if (s.get("text") or "").strip()
-            ],
-        )
+        with conn.cursor() as cursor:
+            cursor.executemany(
+                """
+                INSERT INTO transcript_segments (memory_id, start_time, end_time, text)
+                VALUES (%s, %s, %s, %s)
+                """,
+                [
+                    (memory_id, float(s["start"]), float(s["end"]), (s.get("text") or "").strip())
+                    for s in segments
+                    if (s.get("text") or "").strip()
+                ],
+            )
 
     return memory_id
 

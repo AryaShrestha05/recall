@@ -16,7 +16,7 @@ PostgreSQL stores memories and transcripts. Raw audio is never overwritten.
 
 ## Requirements
 
-- macOS on Apple Silicon (transcription uses [mlx-whisper](https://github.com/ml-explore/mlx-examples/tree/main/whisper))
+- macOS on Apple Silicon for local MLX transcription
 - Python 3.12
 - [ffmpeg](https://ffmpeg.org/) (`brew install ffmpeg`)
 - PostgreSQL 17
@@ -26,7 +26,7 @@ PostgreSQL stores memories and transcripts. Raw audio is never overwritten.
 ```bash
 python3.12 -m venv .venv
 source .venv/bin/activate
-pip install -r backend/requirements.txt
+pip install -r backend/requirements-dev.txt
 ```
 
 Create the database once and apply the first migration:
@@ -41,6 +41,7 @@ Tell Recall which PostgreSQL database to use:
 
 ```bash
 export DATABASE_URL=postgresql://recall@localhost:5432/recall
+export TRANSCRIPTION_ENGINE=mlx
 ```
 
 ## Ingest a recording
@@ -63,6 +64,7 @@ uvicorn backend.app:app --reload
 
 | Method | Path | What it does |
 | --- | --- | --- |
+| `GET` | `/memories` | List the 50 newest memories for Home |
 | `POST` | `/ingest` | Upload an audio file, transcribe, return the memory |
 | `GET` | `/memories/{id}` | Source + full transcript + segments |
 
@@ -80,9 +82,16 @@ Docs: http://127.0.0.1:8000/docs
 ```
 backend/app.py      FastAPI routes
 backend/db.py       PostgreSQL connection and memory fetch
-backend/ingest.py   Copy audio, transcribe, persist
+backend/ingest.py   Copy audio and persist the result
+backend/transcription.py Shared development/production transcription entry point
 supabase/migrations PostgreSQL schema changes used locally and in Supabase
 data/sources/       Raw audio (gitignored)
+```
+
+Production installs `backend/requirements-production.txt` and sets:
+
+```bash
+export TRANSCRIPTION_ENGINE=faster-whisper
 ```
 
 ## Next

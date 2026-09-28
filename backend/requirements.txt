@@ -1,5 +1,5 @@
 fastapi
 uvicorn
-mlx-whisper
 python-multipart
 psycopg[binary]
+python-dotenv
