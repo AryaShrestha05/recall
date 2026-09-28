@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.pyc
+data/
+.env
+.postgres/
+.postgres.log
+transcript.txt
+.DS_Store
+.cursor
