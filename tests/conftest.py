@@ -35,7 +35,9 @@ def schema():
 @pytest.fixture(autouse=True)
 def empty_tables(schema):
     with psycopg.connect(TEST_DATABASE_URL, autocommit=True) as conn:
-        conn.execute("TRUNCATE transcript_segments, memories, sources RESTART IDENTITY CASCADE")
+        conn.execute(
+            "TRUNCATE ingest_jobs, transcript_segments, memories, sources RESTART IDENTITY CASCADE"
+        )
 
 
 @pytest.fixture(autouse=True)
