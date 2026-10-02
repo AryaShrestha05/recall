@@ -1,4 +1,7 @@
-"""Ingest safety tests. Uses a fake transcriber and database, so no Whisper or PostgreSQL is needed."""
+"""Ingest safety tests.
+
+Uses a fake transcriber and database, so no Whisper or PostgreSQL is needed.
+"""
 
 from pathlib import Path
 
@@ -73,7 +76,9 @@ def test_same_filename_uploads_never_overwrite(env):
     assert [m[0] for m in store["memories"]] == ["recording", "recording"]
 
 
-@pytest.mark.parametrize("name", ["../../escape.m4a", "/tmp/escape.m4a", "..\\..\\escape.m4a", ".."])
+@pytest.mark.parametrize(
+    "name", ["../../escape.m4a", "/tmp/escape.m4a", "..\\..\\escape.m4a", ".."]
+)
 def test_upload_name_cannot_escape_sources(env, name):
     sources, store = env
     assert upload(name).status_code == 200

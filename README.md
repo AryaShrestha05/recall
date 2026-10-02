@@ -77,14 +77,27 @@ curl http://127.0.0.1:8000/memories/1
 
 Docs: http://127.0.0.1:8000/docs
 
-## Tests
+## Tests and linting
 
-Use a fake transcriber and database, so no Whisper model or PostgreSQL is needed:
+There are two test suites, both using a fake transcriber so Whisper is never loaded:
+
+- `backend/tests/` checks upload safety (unique stored names, path traversal, cleanup on failure) with a fake database, so it needs no PostgreSQL.
+- `tests/` runs the full pipeline and API against a real, disposable PostgreSQL database. Every run wipes and rebuilds its tables, so it only uses `TEST_DATABASE_URL` and refuses to start without it; it never touches `DATABASE_URL`.
 
 ```bash
 pip install -r backend/requirements-test.txt
-python -m pytest backend/tests
+python -m pytest backend/tests          # no database needed
+
+createdb -O recall recall_test
+export TEST_DATABASE_URL=postgresql://recall@localhost:5432/recall_test
+pytest                                  # both suites
+ruff check .
+ruff format .
 ```
+
+GitHub Actions (`.github/workflows/ci.yml`) runs ruff and both suites against a temporary PostgreSQL 17 on every push to `main` and every pull request.
+
+Dependency versions are pinned with `==` in `backend/requirements*.txt`. To upgrade one, change its version, rerun the tests, and commit.
 
 ## Layout
 
@@ -94,6 +107,7 @@ backend/db.py       PostgreSQL connection and memory fetch
 backend/ingest.py   Copy audio and persist the result
 backend/transcription.py Shared development/production transcription entry point
 supabase/migrations PostgreSQL schema changes used locally and in Supabase
+tests/              pytest suite (fake transcriber, disposable database)
 data/sources/       Raw audio (gitignored)
 ```
 

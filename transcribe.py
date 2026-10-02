@@ -13,7 +13,6 @@ from pathlib import Path
 # mlx_whisper is the speech-to-text tool that listens to the recording.
 import mlx_whisper
 
-
 # The command must contain exactly one audio path.
 if len(sys.argv) != 2:
     raise SystemExit("Usage: python transcribe.py <audio-file>")

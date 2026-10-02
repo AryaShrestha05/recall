@@ -17,10 +17,24 @@ def transcribe(audio_path: Path) -> dict:
         return _transcribe_with_mlx(audio_path)
     if engine == "faster-whisper":
         return _transcribe_with_faster_whisper(audio_path)
+    if engine == "fake":
+        return _transcribe_with_fake(audio_path)
 
     raise RuntimeError(
-        f"Unknown TRANSCRIPTION_ENGINE: {engine}. Use 'mlx' or 'faster-whisper'."
+        f"Unknown TRANSCRIPTION_ENGINE: {engine}. Use 'mlx', 'faster-whisper', or 'fake'."
     )
+
+
+def _transcribe_with_fake(audio_path: Path) -> dict:
+    """Return a fixed transcript instantly, for tests and machines without Whisper."""
+    segments = [
+        {"start": 0.0, "end": 2.5, "text": f" This is a fake transcript of {audio_path.name}."},
+        {"start": 2.5, "end": 5.0, "text": " It lets tests run without loading a speech model."},
+    ]
+    return {
+        "text": " ".join(segment["text"].strip() for segment in segments),
+        "segments": segments,
+    }
 
 
 def _transcribe_with_mlx(audio_path: Path) -> dict:

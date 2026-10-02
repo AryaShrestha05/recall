@@ -34,4 +34,4 @@ def read_memory(memory_id: int):
     try:
         return get_memory(memory_id)
     except KeyError:
-        raise HTTPException(404, "memory not found")
+        raise HTTPException(404, "memory not found") from None

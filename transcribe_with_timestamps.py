@@ -5,7 +5,6 @@ from pathlib import Path
 
 import mlx_whisper
 
-
 if len(sys.argv) != 2:
     raise SystemExit("Usage: python transcribe_with_timestamps.py <audio-file>")
 
