@@ -46,7 +46,7 @@ export TRANSCRIPTION_ENGINE=mlx
 
 ## Ingest a recording
 
-Copies the file into `data/sources/`, transcribes it, and writes a Memory plus timestamped segments to PostgreSQL.
+Copies the file into `data/sources/` under a new random name (the original filename becomes the memory title), transcribes it, and writes a Memory plus timestamped segments to PostgreSQL. If transcription or the database write fails, the copied file is removed.
 
 ```bash
 python -m backend.ingest path/to/recording.m4a
@@ -76,6 +76,15 @@ curl http://127.0.0.1:8000/memories/1
 ```
 
 Docs: http://127.0.0.1:8000/docs
+
+## Tests
+
+Use a fake transcriber and database, so no Whisper model or PostgreSQL is needed:
+
+```bash
+pip install -r backend/requirements-test.txt
+python -m pytest backend/tests
+```
 
 ## Layout
 
