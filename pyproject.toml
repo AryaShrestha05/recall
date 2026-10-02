@@ -9,5 +9,5 @@ select = ["E", "F", "I", "B", "UP"]
 extend-immutable-calls = ["fastapi.File"]
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["tests", "backend/tests"]
 pythonpath = ["."]

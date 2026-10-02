@@ -1,11 +1,26 @@
 from __future__ import annotations
 
+import re
 import shutil
+import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 
 from .db import SOURCES, connect
 from .transcription import transcribe
+
+
+def new_source_path(filename: str | None) -> Path:
+    """Return a fresh, server-chosen path in SOURCES for one recording.
+
+    Only a sanitized extension is taken from ``filename``, so client-supplied
+    names can neither overwrite earlier audio nor escape SOURCES.
+    """
+    suffix = Path(filename or "").suffix.lower()
+    if not re.fullmatch(r"\.[a-z0-9]{1,10}", suffix):
+        suffix = ""
+    SOURCES.mkdir(parents=True, exist_ok=True)
+    return SOURCES / f"{uuid.uuid4().hex}{suffix}"
 
 
 def ingest(audio_path: Path, title: str | None = None) -> int:
@@ -19,11 +34,30 @@ def ingest(audio_path: Path, title: str | None = None) -> int:
         raise FileNotFoundError(audio_path)
 
     # Keep a copy of the original recording inside Recall's source directory.
-    SOURCES.mkdir(parents=True, exist_ok=True)
-    stored = SOURCES / audio_path.name
-    if audio_path != stored:
+    stored = new_source_path(audio_path.name)
+    try:
         shutil.copy2(audio_path, stored)
+    except BaseException:
+        stored.unlink(missing_ok=True)
+        raise
 
+    return ingest_stored(stored, title or audio_path.stem)
+
+
+def ingest_stored(stored: Path, title: str) -> int:
+    """Transcribe and save a recording already placed by new_source_path().
+
+    If anything fails, the stored file is deleted so no audio is left behind
+    without a database row pointing at it.
+    """
+    try:
+        return _save_memory(stored, title)
+    except BaseException:
+        stored.unlink(missing_ok=True)
+        raise
+
+
+def _save_memory(stored: Path, title: str) -> int:
     # The selected engine returns both the full transcript and timestamped pieces.
     result = transcribe(stored)
     transcript = (result.get("text") or "").strip()
@@ -54,7 +88,7 @@ def ingest(audio_path: Path, title: str | None = None) -> int:
             RETURNING id
             """,
             (
-                title or audio_path.stem,
+                title,
                 "lecture",
                 datetime.now(UTC).isoformat(),
                 None,

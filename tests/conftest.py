@@ -41,12 +41,10 @@ def empty_tables(schema):
 @pytest.fixture(autouse=True)
 def sources_dir(tmp_path, monkeypatch):
     """Store copied recordings in a temporary folder instead of data/sources/."""
-    import backend.app
     import backend.ingest
 
     folder = tmp_path / "sources"
     monkeypatch.setattr(backend.ingest, "SOURCES", folder)
-    monkeypatch.setattr(backend.app, "SOURCES", folder)
     return folder
 
 

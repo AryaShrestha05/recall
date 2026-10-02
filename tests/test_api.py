@@ -1,3 +1,6 @@
+from pathlib import Path
+
+
 def test_memories_starts_empty(client):
     response = client.get("/memories")
 
@@ -12,7 +15,9 @@ def test_ingest_upload_returns_the_new_memory(client, sources_dir):
     memory = response.json()
     assert memory["title"] == "talk"
     assert len(memory["segments"]) == 2
-    assert (sources_dir / "talk.m4a").read_bytes() == b"audio bytes"
+    stored = Path(memory["raw_uri"])
+    assert stored.parent == sources_dir
+    assert stored.read_bytes() == b"audio bytes"
 
 
 def test_memory_list_and_detail_after_upload(client):
@@ -24,7 +29,7 @@ def test_memory_list_and_detail_after_upload(client):
 
     detail = client.get(f"/memories/{memory_id}").json()
     assert detail["id"] == memory_id
-    assert "talk.m4a" in detail["transcript"]
+    assert Path(detail["raw_uri"]).name in detail["transcript"]
 
 
 def test_unknown_memory_is_404(client):
