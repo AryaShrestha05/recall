@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import psycopg
 import pytest
 
@@ -14,10 +16,13 @@ def test_ingest_stores_source_memory_and_segments(audio_file, sources_dir):
     assert memory["type"] == "lecture"
     assert memory["source_type"] == "audio"
     assert memory["duration"] == 5.0
-    assert "lecture.m4a" in memory["transcript"]
+    stored = Path(memory["raw_uri"])
+    assert stored.parent == sources_dir
+    assert stored.suffix == ".m4a" and stored.stem != "lecture"
+    assert stored.read_bytes() == b"not really audio"
+    assert stored.name in memory["transcript"]
     assert [s["start_time"] for s in memory["segments"]] == [0.0, 2.5]
-    assert memory["segments"][0]["text"] == "This is a fake transcript of lecture.m4a."
-    assert (sources_dir / "lecture.m4a").read_bytes() == b"not really audio"
+    assert memory["segments"][0]["text"] == f"This is a fake transcript of {stored.name}."
 
 
 def test_ingest_uses_given_title(audio_file):

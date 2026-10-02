@@ -1,5 +1,6 @@
 import threading
 import time
+from pathlib import Path
 
 import backend.ingest
 from backend import jobs
@@ -40,7 +41,9 @@ def test_ingest_returns_a_job_that_finishes_with_a_memory(client, sources_dir):
     memory = client.get(f"/memories/{job['memory_id']}").json()
     assert memory["title"] == "talk"
     assert len(memory["segments"]) == 2
-    assert (sources_dir / "talk.m4a").read_bytes() == b"audio bytes"
+    stored = Path(memory["raw_uri"])
+    assert stored.parent == sources_dir
+    assert stored.read_bytes() == b"audio bytes"
 
 
 def test_server_stays_responsive_while_transcribing(client, monkeypatch):
@@ -69,7 +72,7 @@ def test_uploads_are_processed_in_order(client):
     assert titles == ["a", "b"]
 
 
-def test_failed_transcription_marks_job_failed(client, monkeypatch):
+def test_failed_transcription_marks_job_failed(client, monkeypatch, sources_dir):
     def broken_transcribe(_path):
         raise RuntimeError("model crashed")
 
@@ -80,16 +83,20 @@ def test_failed_transcription_marks_job_failed(client, monkeypatch):
     assert job["error"] == "RuntimeError: model crashed"
     assert job["memory_id"] is None
     assert client.get("/memories").json() == []
+    assert list(sources_dir.iterdir()) == []
 
 
 def test_restart_fails_jobs_left_unfinished(client, tmp_path):
-    job = jobs.create_job(tmp_path / "lost.m4a")
+    audio = tmp_path / "lost.m4a"
+    audio.write_bytes(b"audio")
+    job = jobs.create_job(audio, "lost")
 
     jobs.fail_interrupted_jobs()
 
     job = client.get(f"/jobs/{job['id']}").json()
     assert job["status"] == "failed"
     assert "restarted" in job["error"]
+    assert not audio.exists()
 
 
 def test_memory_list_and_detail_after_upload(client):
@@ -101,7 +108,7 @@ def test_memory_list_and_detail_after_upload(client):
 
     detail = client.get(f"/memories/{memory_id}").json()
     assert detail["id"] == memory_id
-    assert "talk.m4a" in detail["transcript"]
+    assert Path(detail["raw_uri"]).name in detail["transcript"]
 
 
 def test_unknown_memory_is_404(client):

@@ -1,10 +1,12 @@
 import shutil
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, File, HTTPException, UploadFile
 
 from . import jobs
-from .db import SOURCES, get_memory, list_memories
+from .db import get_memory, list_memories
+from .ingest import new_source_path
 
 
 @asynccontextmanager
@@ -26,11 +28,16 @@ def read_memories():
 @app.post("/ingest", status_code=202)
 def ingest_upload(file: UploadFile = File(...)):
     """Save the upload and queue it for transcription. Poll GET /jobs/{id} for the result."""
-    SOURCES.mkdir(parents=True, exist_ok=True)
-    dest = SOURCES / (file.filename or "upload.m4a")
-    with dest.open("wb") as out:
-        shutil.copyfileobj(file.file, out)
-    job = jobs.create_job(dest)
+    # The client's filename is only used for the title and extension, never as a path.
+    original = Path(file.filename or "upload.m4a").name
+    dest = new_source_path(original)
+    try:
+        with dest.open("xb") as out:
+            shutil.copyfileobj(file.file, out)
+        job = jobs.create_job(dest, Path(original).stem or "upload")
+    except BaseException:
+        dest.unlink(missing_ok=True)
+        raise
     jobs.submit(job["id"])
     return job
 

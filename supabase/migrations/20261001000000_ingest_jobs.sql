@@ -6,6 +6,7 @@ CREATE TABLE ingest_jobs (
     status TEXT NOT NULL DEFAULT 'queued'
         CHECK (status IN ('queued', 'running', 'done', 'failed')),
     audio_path TEXT NOT NULL,
+    title TEXT NOT NULL,
     memory_id BIGINT REFERENCES memories(id) ON DELETE SET NULL,
     error TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
