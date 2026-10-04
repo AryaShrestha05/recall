@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 import shutil
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from .db import SOURCES, connect
@@ -90,7 +90,7 @@ def _save_memory(stored: Path, title: str) -> int:
             (
                 title,
                 "lecture",
-                datetime.now(timezone.utc).isoformat(),
+                datetime.now(UTC).isoformat(),
                 None,
                 source_id,
             ),
@@ -136,4 +136,8 @@ if __name__ == "__main__":
     assert payload["transcript"] and len(payload["transcript"]) > 50
 
     # Print a small result for the person running the command.
-    print(json.dumps({"memory_id": mid, "duration": payload["duration"], "chars": len(payload["transcript"])}))
+    print(
+        json.dumps(
+            {"memory_id": mid, "duration": payload["duration"], "chars": len(payload["transcript"])}
+        )
+    )
