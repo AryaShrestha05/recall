@@ -10,6 +10,7 @@ from fastapi.testclient import TestClient
 
 from backend import app as app_module
 from backend import ingest as ingest_module
+from backend import jobs as jobs_module
 
 
 class FakeConnection:
@@ -55,7 +56,17 @@ def env(tmp_path, monkeypatch):
         lambda path: {"text": "hello", "segments": [{"start": 0.0, "end": 1.0, "text": "hello"}]},
     )
     monkeypatch.setattr(ingest_module, "connect", lambda: FakeConnection(store, store["fail_db"]))
-    monkeypatch.setattr(app_module, "get_memory", lambda mid: {"id": mid})
+    # Run each upload's job inline, without the job table or worker thread.
+    queued = {}
+
+    def create_job(path, title):
+        queued[len(queued) + 1] = (path, title)
+        return {"id": len(queued), "status": "queued"}
+
+    monkeypatch.setattr(jobs_module, "create_job", create_job)
+    monkeypatch.setattr(
+        jobs_module, "submit", lambda job_id: ingest_module.ingest_stored(*queued[job_id])
+    )
     return sources, store
 
 
@@ -65,8 +76,8 @@ def upload(name, data=b"audio"):
 
 def test_same_filename_uploads_never_overwrite(env):
     sources, store = env
-    assert upload("recording.m4a", b"first").status_code == 200
-    assert upload("recording.m4a", b"second").status_code == 200
+    assert upload("recording.m4a", b"first").status_code == 202
+    assert upload("recording.m4a", b"second").status_code == 202
 
     files = sorted(sources.iterdir())
     assert len(files) == 2
@@ -81,7 +92,7 @@ def test_same_filename_uploads_never_overwrite(env):
 )
 def test_upload_name_cannot_escape_sources(env, name):
     sources, store = env
-    assert upload(name).status_code == 200
+    assert upload(name).status_code == 202
 
     stored = [s[1] for s in store["sources"]]
     assert stored == [str(f) for f in sources.iterdir()]
